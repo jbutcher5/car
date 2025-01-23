@@ -1,20 +1,3 @@
-//********************************************************//
-//*  University of Nottingham                            *//
-//*  Department of Electrical and Electronic Engineering *//
-//*  UoN EEEBot                                          *//
-//*                                                      *//
-//*  Motor & Servo Basic Test Code                       *//
-//********************************************************//
-
-// ASSUMPTION: Channel A is LEFT, Channel B is RIGHT
-
-// use this code to correctly assign the four pins to move the car forwards and backwards
-// you first need to change the pin numbers for the four motor input 'IN' pins and two enable 'en' pins below and then 
-// decide which go HIGH and LOW in each of the movements, stopMotors has been done for you
-// ** marks where you need to insert the pin number or state
-
-// feel free to modify this code to test existing or new functions
-
 #include <ESP32Servo.h>
 #include <ESP32Encoder.h>
 #include <Wire.h>
@@ -144,39 +127,4 @@ void motors(int leftSpeed, int rightSpeed) {
   ledcWrite(enA, leftSpeed);
   ledcWrite(enB, rightSpeed);
   delay(25);
-}
-
-void goForwards() {
-  digitalWrite(INa, HIGH);
-  digitalWrite(INb, LOW);
-  digitalWrite(INc, HIGH);
-  digitalWrite(INd, LOW);
-}
-
-void goBackwards() {
-  digitalWrite(INa, LOW);
-  digitalWrite(INb, HIGH);
-  digitalWrite(INc, LOW);
-  digitalWrite(INd, HIGH);
-}
-
-void goClockwise() {
-  digitalWrite(INa, HIGH);
-  digitalWrite(INb, LOW);
-  digitalWrite(INc, LOW);
-  digitalWrite(INd, HIGH);
-}
-
-void goAntiClockwise() {
-  digitalWrite(INa, LOW);
-  digitalWrite(INb, HIGH);
-  digitalWrite(INc, HIGH);
-  digitalWrite(INd, LOW);
-}
-
-void stopMotors() {
-  digitalWrite(INa, LOW);
-  digitalWrite(INb, LOW);
-  digitalWrite(INc, LOW);
-  digitalWrite(INd, LOW);
 }
