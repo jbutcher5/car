@@ -8,6 +8,13 @@
 #define port 12
 #define starboard 19
 
+#define PHOTO1 26
+#define PHOTO2 25
+#define PHOTO3 13
+#define PHOTO4 14
+#define PHOTO5 34
+#define PHOTO6 27
+
 #define RAD_TO_DEG (180/3.141592)
 
 typedef struct {
@@ -54,7 +61,7 @@ void calibrate_mpu(unsigned long c) {
   offset[1].z /= count;
 }
 
-float integrate(unsigned int dt, float prev, float next) {
+float integrate(unsigned long dt, float prev, float next) {
   return (prev * dt + 0.5 * (next - prev) * dt) * 0.000001;
 }
 
@@ -95,6 +102,45 @@ void get_mpu() {
   prev_gyro = gyro;
   prev_accel = acceleration;
   prev_velocity = velocity;
+}
+
+int get_pi(float error, float Kp, float Ki) {
+  static unsigned long previous = micros();
+  unsigned long current = micros();
+
+  unsigned long dt = current - previous;
+  previous = current;
+
+  static int prev_error = error;
+
+  static float integral_error = 0;
+  integral_error += integrate(dt, prev_error, error);
+
+  return Kp * error + Ki * integral_error;
+}
+
+int *photo_values() {
+  const int photo_pins[6] = {PHOTO1, PHOTO2, PHOTO3, PHOTO4, PHOTO5, PHOTO6};
+  static int photo_values[6];
+
+  for (int i = 0; i < 6; i++)
+    photo_values[i] = 4095 - analogRead(photo_pins[i]);
+
+  return photo_values;
+}
+
+float weighted_sample_array(int *values) {
+  const int distances[6] = {-18, -11, -4, 4, 10, 17};
+
+  float numerator = 0;
+  float denominator = 0;
+
+  for (int x = 0; x < 6; x++) {
+    numerator += (float)values[x] * distances[x];
+    denominator += (float)values[x];
+  }
+
+  return numerator/denominator;
 }
 
 void write_port_led(float d) {
@@ -168,6 +214,13 @@ void setup() {
   pinMode(port, OUTPUT);
   pinMode(starboard, OUTPUT);
 
+  pinMode(PHOTO1, INPUT);
+  pinMode(PHOTO2, INPUT);
+  pinMode(PHOTO3, INPUT);
+  pinMode(PHOTO4, INPUT);
+  pinMode(PHOTO5, INPUT);
+  pinMode(PHOTO6, INPUT);
+
   Wire.begin();
 
   if (!mpu.begin()) {
@@ -180,7 +233,7 @@ void setup() {
   mpu.setGyroRange(MPU6050_RANGE_500_DEG);
   Serial.println("MPU6050 Found!");
 
-  calibrate_mpu(1000);
+  calibrate_mpu(100);
 }
 
 
@@ -214,15 +267,15 @@ void loop() {
   //Serial.println(a.acceleration.x - offset[0].x + a.acceleration.y - offset[0].y + a.acceleration.z - offset[0].z + g.gyro.x - offset[1].x + g.gyro.y - offset[1].y + g.gyro.z - offset[1].z);
 
 
-  get_mpu();
+  //get_mpu();
 
   //Serial.printf("%f %d %f\n", angle.z, (int)angle.z % 90, measure_distance_accurate());
 
-  write_starboard_led(angle.z);
-  write_port_led(measure_distance());
+  //write_starboard_led(angle.z);
+  //write_port_led(measure_distance());
 
   
-  int quartile_direction = (int)angle.z % 90;
+  //int quartile_direction = (int)angle.z % 90;
 /*
   Serial.printf("%d %f\n", servoStraight, angle.z);
 
@@ -240,8 +293,8 @@ void loop() {
   }
 */
 
-  float x = measure_distance();
-
+  //float x = measure_distance();
+/*
   if (x <= 100.f) {
     updateDirection(90, 0, 0);
     delay(500);
@@ -251,7 +304,7 @@ void loop() {
     float a = angle.z + 90;
     while (angle.z <= a) get_mpu();
     updateDirection(0, 0, 0);
-    /*
+    
     delay(1000);
     if (measure_distance() <= 150.f) {
       updateDirection(0, -100, 100);
@@ -267,12 +320,37 @@ void loop() {
         delay(1000);
       }
     }
-    */
+
   } else if (x <= 200.f) {
     updateDirection(90, 255, 255);
   } else {
     updateDirection(servoStraight, 255, 255);
   }
+*/
+  //Serial.printf("%d %d %d %d %d %d\n", analogRead(PHOTO1),analogRead(PHOTO2),analogRead(PHOTO3),analogRead(PHOTO4),analogRead(PHOTO5),analogRead(PHOTO6));
+  
+  int *values = photo_values();
 
-  delay(100);
+  float error = weighted_sample_array(values);
+
+  int angle = get_pi(error, 24, 1);
+  int serv_angle = (int)map(angle, -90, 90, 0, 180);
+  updateDirection(serv_angle, 255, 255);
+  
+
+  /* BASIC LINE FOLLOWING
+  int sensor1 = 4095 - analogRead(PHOTO2);
+  int sensor2 = 4095 - analogRead(PHOTO5);
+
+  //Serial.printf("%d %d\n", sensor1, sensor2);
+
+
+  if (sensor1 > sensor2+300)
+    updateDirection(80, 255, 255);
+  else if (sensor2+300 > sensor1)
+    updateDirection(100, 255, 255);
+  else updateDirection(90, 255, 255);
+  */
+
+  delay(5);
 }
